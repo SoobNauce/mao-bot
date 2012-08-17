@@ -1,7 +1,6 @@
 import socket
 from mao_game import Game
 import irc_config as config
-import time
 
 
 
@@ -32,17 +31,23 @@ class irc_bot:
         self.buffer = ""
         self.config_options = {"notice": True, "chanstatus": True, "reject": "both"}
     def connect(self):
+        "Connects to the IRC server in IRC_config"
         self.connection.connect( (config.server, config.port) )
         self.send_data("NICK {n}".format(n=self.nick), "")
         self.send_data("USER SoobNauce 8 *", " SoobNauce")
         self.send_data("MODE {n} +B".format(n=self.nick), "")
         self.get_messages()
     def get_messages(self):
+        "Receives messages from the IRC server and calls functions to handle them"
         self.buffer += self.connection.recv(512)
+        #Because messages must end in \r\n, it can be safely assumed that
+        #there is more to the message from the server, if the message
+        #does not end in \r\n
         while self.buffer[-2:] != "\r\n":
             self.buffer += self.connection.recv(512)
         self.process_buffer()
     def process_buffer(self):
+        "Takes any messages that have queued up, and calls functions to handle them"
         if len(self.buffer) < 2:
             return
         while self.buffer[-2:] != "\r\n":
@@ -52,7 +57,9 @@ class irc_bot:
         for message in queue:
             self.process_message( message )
     def process_message(self, message ):
+        "Determines exactly which functions to call for a message"
         (prefix, command, body) = parse_message(message)
+        #Respond automatically to pings
         if command == "PING":
             ping_reply = body.split(":",1)[1]
             self.send_data( "PONG", ping_reply )
@@ -61,6 +68,7 @@ class irc_bot:
             if command_parts[0] == "PRIVMSG":
                 self.process_privmsg( (prefix, command, body) )
     def process_privmsg(self, (prefix, command, body) ):
+        "Handles messages sent in query windows, and in channels"
         user_from = prefix.split("!", 1)[0][1:]
         (channel, message) = body.split(" :", 1)
         if channel == self.nick:
@@ -74,6 +82,7 @@ class irc_bot:
         else:
             self.scan_chatter( message, user_from, channel )
     def process_ctcp( self, message, user_from ):
+        "Handles CTCP messages"
         split_message = message.split(" ")
         if split_message[0] == "\x01VERSION\x01":
             print "VERSION requested"
@@ -81,6 +90,8 @@ class irc_bot:
         elif split_message[0] == "\x01PING":
             print "PING requested"
             self.send_data( "", "NOTICE {f}".format(f=user_from), message )
+        else:
+    	
     def process_command( self, message, user, channel ):
         print "{u} used command (sent to {c}).  Message:\n\t{m}".format(u=user, c=channel, m=message)
         split_msg = message.split(" ", 1)
