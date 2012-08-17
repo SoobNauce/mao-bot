@@ -1,0 +1,73 @@
+There are three layers: the card engine, the game engine, and the text engine/IRC interface.
+
+
+Card engine:
+	Pile(list) stores cards; the right-most item is the topmost, which will be gotten with pop().  It is indexed as -1; card 0 is the bottom card.
+	Instances of Pile have the following methods for dealing with cards, in addition to built-in list methods:
+		P.push(card): add a card to the top of the pile.
+		P.place(position, card): put [card] in the pile.  it will have position [position].
+		P.take(position): take card at [position] out of the pile.  The card is returned.
+	backend functions:
+		say_suit(card): Takes a card (int from 1 to 54) and says what suit it is (Spades, Hearts, Diamond, Clubs).
+		say_val(card): Tells what the value of a card is.
+		say_card(card): Gives the full name of a card.
+		new_deck(): Returns a shuffled deck, as a Pile.
+		shuffle( iterable ): Shuffles the iterable in-place.  (wrapper around random.shuffle)
+
+
+Game interface:
+	The game is handled in OOP style, as an object, class Game.
+	G.piles is a dict where piles are assigned names.
+		G.stack is a normal list, containing (hopefully) one list of cards, to be transferred from place to place.
+		G.history is a string representing the last "play" action taken.
+		G.piles["deck"] is a deck with ceil(n/2)*52 cards in it (*54 if jokers are included), where n is the number of players in the game.
+		G.piles["active"] is a pile that functions as the discard pile.  Players sometimes pick up this pile, and when the deck runs out of cards, the cards from this pile are shuffled (except the top card) and returned to the deck.
+	G.draw( Pile, count=1 ): draw [count] cards from the top of [Pile], and put them on the stack as a list.
+	G.merge( Pile ): Add the cards from the stack to the top cards of [Pile]
+	G.view( Pile ): Returns a string describing the cards in [Pile]
+		ex. "AH AD 8D"
+	G.add_player( name ): Adds the named player to the list of players.
+	
+Text interface:
+	Takes in user commands in the form [command] [args1] [args2] ...
+	Commands:
+		"start": Interactive start (prompts for players, turn order is the order players are added)
+		"status": Prints the cards in the "active" pile in a compressed format, the active player, and the cards in your hand.
+		"player [name]": Switches view to the named player.
+		"penalty [player] [rule=None] [count=1]": Gives the named player a penalty card, citing the named rule.  Optionally, gives more than one penalty card at once. (only avaliable if a rule was named)
+		"draw [count=1]": Draws the specified number of cards and adds them to your hand.  (Only the active player can draw a card)
+		"play [location]": Plays the card at the given location from your hand, to the active pile.  (Only the active player can play a card)
+		"reject": Rejects the last move and gives the player who did it a penalty.  Penalties cannot be rejected.
+		"advance": Ends the active player's turn.  (Only the active player can end his turn)
+		"winner [player]": Declares a player to be the winner, and ends the game.  The player who uses this may be given a penalty card instead.
+		"refresh": refreshes the deck with the bottom cards of the active pile.  Automatically called when the deck reaches 0 cards.  If the active pile is also empty, a new deck is shuffled in.
+
+IRC interface:
+	Commands are prefixed with !, and carry with them information about the denizen who used the command.
+	Generally, chanops are given special permissions.
+	Anytime commands:
+		"!auth [password]": Attempt to authorize with the given password.
+		"!setup": Begins the interactive game setup process.
+		#"!rule [nick]": begins a PM prompt to the selected person to add a rule.  NOT guaranteed to be implemented!
+		"!scoreboard (clear)": Shows a scoreboard of how many games each person has won.  Ops only: !scoreboard clear will clear the scoreboard of entries.
+	Setup phase commands:
+		"!join": joins the game.  Turn order is determined by join order.
+		"!begin": begins the game.
+		"!abort": aborts the setup.
+	Game commands:
+		"!status": Check the status of the game, printing the current player, the registered players (and turn order), and the 'active' pile.
+		"!hand": Check your own hand.
+		"!play [location]": Play the card at [location] from your hand, onto the active pile.  Current player only.
+		"!draw [count=1]": Draws the specified number of cards.  
+		"!reject": Rejects the latest played card, returning it to the player's hand, and puts the game on a 10-second halt where no action can be taken.  Optionally, gives the player a penalty card and passes the turn.
+		"!boot [player]": Ops only - removes the named player from the game.
+		"!quit": Removes you from the game.
+		"!advance": Ends your turn and passes to the next player.  Current player, and ops, only.
+		"!refresh": (Ops only) Refills the deck with cards from the active pile.  Automatically called when the deck reaches 0 cards.  If the active pile is empty, a new deck is shuffled in.
+		The commands "!play", "!draw", and "!reject" can optionally be suffixed with a normal message using a semicolon.  It is not possible to play multiple cards this way.
+
+	Config options:
+		Modified with "!config [x]"
+		"notice [true/false]": Whether to use notice (true) or pm/query (false) to tell players their cards.  Defaults to false.
+		"chanstatus [true/false]": Whether to respond to status in-channel (true) or send a message/notice (false).  Defaults to true.
+		"reject none/penalty/skip/both": Whether to give a penalty card or skip the player's turn (or both) when their move is rejected.
