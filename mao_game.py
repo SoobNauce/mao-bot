@@ -39,7 +39,7 @@ scores, and eventually, rules."""
     def add_player(self, name):
         "Adds a player to the game"
         if not self.running:
-            self.players.append("player_" + name)
+            self.players.append(name)
     def draw(self, location=None, count=1):
         "Draws cards from the deck, or the given pile, and adds them to the stack"
         if location == None:
@@ -61,16 +61,22 @@ scores, and eventually, rules."""
             self.stack.append(cards)
             return "Wrong player"
     def start_game(self):
+        "Starts a new game, or explains why a game could not be started"
         if len(self.players) < 2:
             self.status_msg( "Couldn't start game: too few players" )
         elif self.running:
             self.status_msg( "Couldn't start game: already running" )
         else:
-            self.running = True
+            for player in self.players:
+                
             self.draw(1)
             self.give(piles["active"])
             self.status_msg( "Game started!" )
+            self.running = True
     def show_status(self):
-        
+        """Current players: Fred (8), *SoobNauce (1)
+        Top card: Ace of Spades; 8 cards in deck, 4 in active pile."""
+    
     def status_msg(self, message):
+        "Adds a message to the status queue, to be read by the rendering engine"
         self.status_queue.append( message )
